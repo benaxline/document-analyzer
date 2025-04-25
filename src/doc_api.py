@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, List
 import openai
 import os
 from dotenv import load_dotenv
+from uuid import UUID, uuid4
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
