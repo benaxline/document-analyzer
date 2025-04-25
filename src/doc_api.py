@@ -1,12 +1,15 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from .config import Settings, get_settings
+from pydantic import BaseModel, Field
+from typing import Optional, List
 import openai
 import os
 from dotenv import load_dotenv
+from uuid import UUID, uuid4
+from datetime import datetime
 
 # Load environment variables
-load_dotenv()
+# load_dotenv()
 
 app = FastAPI(title="Document Analyzer")
 
@@ -111,3 +114,4 @@ async def analyze_document(document_id: UUID):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
