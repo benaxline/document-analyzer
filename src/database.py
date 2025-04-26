@@ -60,3 +60,22 @@ def load_documents(db_path: str = "docs.db") -> List[Tuple[int, str, str, dateti
     conn.close()
     return results
 
+def update_document(doc_id: int, content: str, topic: str, db_path: str = "docs.db") -> None:
+    """
+    updates document in database
+    :param doc_id: document id
+    :param content: new document content
+    :param topic: new document topic
+    """
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        """UPDATE documents 
+           SET content = ?, 
+               topic = ?,
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id = ?""", 
+        (content, topic, doc_id)
+    )
+    conn.commit()
+    conn.close()
