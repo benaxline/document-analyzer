@@ -13,3 +13,10 @@ Create Environment variables with `.env`:
 - copy and paste `.env.example` into your `.env` and replace the OpenAI key placeholder with your real OpenAI key.
 
 ## How to run:
+
+1. Run the server. In terminal,
+
+  `uvicorn src.doc_api:app --reload`
+
+2. Go to `index.html` and open in browser.
+   
