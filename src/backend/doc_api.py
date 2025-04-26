@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 # Set default database path
-app.state.db_path = "docs.db"
+app.state.db_path = "src/database/docs.db"
 
 class DocumentCreate(BaseModel):
     content: str

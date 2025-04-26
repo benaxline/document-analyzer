@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 from typing import Optional, Tuple, List, Union
 
-def init_db(db_path: str = "documents.db") -> None:
+def init_db(db_path: str = "src/database/docs.db") -> None:
     """
     initializes SQLite database
     """
