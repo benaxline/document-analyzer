@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from dotenv import load_dotenv
+from openai import OpenAI
 import os
 
 # Load .env file
@@ -21,6 +22,17 @@ class Settings(BaseSettings):
         protected_namespaces=()
     )
 
+    @property
+    def openai_client(self) -> OpenAI:
+        return OpenAI(
+            api_key=self.openai_api_key,
+        )
+
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
+
+@lru_cache()
+def get_openai_client() -> OpenAI:
+    settings = get_settings()
+    return settings.openai_client

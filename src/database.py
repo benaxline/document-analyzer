@@ -1,12 +1,10 @@
 import sqlite3
-from sqlite3 import Connection
 from datetime import datetime
-from typing import List, Tuple
+from typing import Optional, Tuple, List, Union
 
-def init_db(db_path: str = "documents.db"):
+def init_db(db_path: str = "documents.db") -> None:
     """
     initializes SQLite database
-    :returns: Connection object
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -18,9 +16,8 @@ def init_db(db_path: str = "documents.db"):
                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP)""")
     conn.commit()
     conn.close()
-    return conn
 
-def store_document(content: str, topic: str, db_path: str = "docs.db") -> int:
+def store_document(content: str, topic: Optional[str], db_path: str) -> int:
     """
     stores document in database
     :param content: document content
@@ -29,53 +26,70 @@ def store_document(content: str, topic: str, db_path: str = "docs.db") -> int:
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO documents (content, topic) VALUES (?, ?)", (content, topic))
-    conn.commit()
-    doc_id = cursor.lastrowid
-    conn.close()
-    return doc_id
+    try:
+        cursor.execute(
+            "INSERT INTO documents (content, topic) VALUES (?, ?)",
+            (content, topic)
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
 
-def load_document(doc_id: int, db_path: str = "docs.db") -> Tuple[str, str, datetime, datetime]:
+def load_document(doc_id: int, db_path: str) -> Optional[Tuple[str, Optional[str], str, str]]:
     """
     loads document from database
     :param doc_id: document id
     :returns: document content, topic, created_at, updated_at
     """
     conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT content, topic, created_at, updated_at FROM documents WHERE id = ?", (doc_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result
+    try:
+        cursor.execute(
+            "SELECT content, topic, created_at, updated_at FROM documents WHERE id = ?",
+            (doc_id,)
+        )
+        result = cursor.fetchone()
+        return result if result is None else tuple(result)
+    finally:
+        conn.close()
 
-def load_documents(db_path: str = "docs.db") -> List[Tuple[int, str, str, datetime, datetime]]:
+def load_documents(db_path: str) -> List[Tuple[int, str, Optional[str], str, str]]:
     """
     loads all documents from database
-    :returns: list of document content, topic, created_at, updated_at
+    :returns: list of document id, content, topic, created_at, updated_at
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, content, topic, created_at, updated_at FROM documents")
-    results = cursor.fetchall()
-    conn.close()
-    return results
+    try:
+        cursor.execute(
+            "SELECT id, content, topic, created_at, updated_at FROM documents"
+        )
+        return cursor.fetchall()
+    finally:
+        conn.close()
 
-def update_document(doc_id: int, content: str, topic: str, db_path: str = "docs.db") -> None:
+def update_document(doc_id: int, content: str, topic: Optional[str], db_path: str) -> bool:
     """
     updates document in database
     :param doc_id: document id
     :param content: new document content
     :param topic: new document topic
+    :returns: True if document was updated
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    cursor.execute(
-        """UPDATE documents 
-           SET content = ?, 
-               topic = ?,
-               updated_at = CURRENT_TIMESTAMP 
-           WHERE id = ?""", 
-        (content, topic, doc_id)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        cursor.execute(
+            """
+            UPDATE documents 
+            SET content = ?, topic = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+            """,
+            (content, topic, doc_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
