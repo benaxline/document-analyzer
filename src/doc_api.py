@@ -18,7 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins (use with caution in production)
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
+    allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
 
@@ -46,7 +46,6 @@ class DocumentAnalysis(BaseModel):
 async def analyze_document(doc_id: int):
     """Analyze a document using OpenAI."""
     try:
-        # Get the document
         result = database.load_document(doc_id, app.state.db_path)
         if not result:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -54,15 +53,10 @@ async def analyze_document(doc_id: int):
         content, current_topic, _, _ = result
         
         if not content or len(content.strip()) < 10:
-            raise HTTPException(
-                status_code=400, 
-                detail="Document content is too short for analysis"
-            )
+            raise HTTPException(status_code=400, detail="Document content is too short for analysis")
         
-        # Get OpenAI client
         client = get_openai_client()
         
-        # Create a more detailed prompt
         prompt = f"""Please analyze the following text carefully and provide:
         1. A specific, descriptive topic (1-3 words)
         2. A comprehensive summary (3-4 sentences) that captures the main points, key arguments, or central themes.
@@ -75,21 +69,18 @@ async def analyze_document(doc_id: int):
         Summary: <detailed summary>
         """
         
-        # Make OpenAI API call with better parameters
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a precise document analyzer. Provide specific, concrete analysis."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.3,  # Lower temperature for more focused responses
-            max_tokens=300    # Allow for longer summaries
+            temperature=0.3,
+            max_tokens=300
         )
         
-        # Parse the response
         ai_response = response.choices[0].message.content
         
-        # More robust response parsing
         try:
             topic_line = next(line for line in ai_response.split('\n') if line.startswith('Topic:'))
             summary_line = next(line for line in ai_response.split('\n') if line.startswith('Summary:'))
@@ -102,12 +93,8 @@ async def analyze_document(doc_id: int):
                 
         except (StopIteration, ValueError) as e:
             logger.error(f"Error parsing OpenAI response: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to parse analysis results"
-            )
+            raise HTTPException(status_code=500, detail="Failed to parse analysis results")
         
-        # Update the document with the AI-generated topic if none exists
         if not current_topic:
             database.update_document(doc_id, content, topic, app.state.db_path)
         
@@ -139,7 +126,7 @@ async def create_document(document: DocumentCreate):
         logger.error(f"Error creating document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/documents", response_model=List[Document])  # Fixed endpoint for /documents
+@app.get("/documents", response_model=List[Document])
 async def read_documents():
     """Retrieve all documents."""
     try:
@@ -161,36 +148,11 @@ async def read_documents():
 @app.get("/documents/{document_id}", response_model=Document)
 async def read_document(document_id: int):
     """Retrieve a specific document by ID."""
-    result = database.load_document(document_id, app.state.db_path)
-    if not result:
-        raise HTTPException(status_code=404, detail="Document not found")
-    content, topic, created_at, updated_at = result
-    return Document(
-        id=document_id,
-        content=content,
-        topic=topic,
-        created_at=created_at,
-        updated_at=updated_at
-    )
-
-@app.put("/documents/{document_id}", response_model=Document)
-async def update_document(document_id: int, document: DocumentUpdate):
-    """Update a specific document by ID."""
-    # First check if document exists
-    current_doc = database.load_document(document_id, app.state.db_path)
-    if not current_doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    
-    # Update the document with new values, keeping old values if new ones aren't provided
-    content = document.content if document.content is not None else current_doc[0]
-    topic = document.topic if document.topic is not None else current_doc[1]
-    
-    database.update_document(document_id, content, topic, app.state.db_path)
-    
-    # Fetch and return updated document
-    updated_doc = database.load_document(document_id, app.state.db_path)
-    if updated_doc:
-        content, topic, created_at, updated_at = updated_doc
+    try:
+        result = database.load_document(document_id, app.state.db_path)
+        if not result:
+            raise HTTPException(status_code=404, detail="Document not found")
+        content, topic, created_at, updated_at = result
         return Document(
             id=document_id,
             content=content,
@@ -198,7 +160,51 @@ async def update_document(document_id: int, document: DocumentUpdate):
             created_at=created_at,
             updated_at=updated_at
         )
-    raise HTTPException(status_code=500, detail="Failed to update document")
+    except Exception as e:
+        logger.error(f"Error reading document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/documents/{document_id}", response_model=Document)
+async def update_document(document_id: int, document: DocumentUpdate):
+    """Update a specific document by ID."""
+    try:
+        current_doc = database.load_document(document_id, app.state.db_path)
+        if not current_doc:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        content = document.content if document.content is not None else current_doc[0]
+        topic = document.topic if document.topic is not None else current_doc[1]
+        
+        database.update_document(document_id, content, topic, app.state.db_path)
+        
+        updated_doc = database.load_document(document_id, app.state.db_path)
+        if updated_doc:
+            content, topic, created_at, updated_at = updated_doc
+            return Document(
+                id=document_id,
+                content=content,
+                topic=topic,
+                created_at=created_at,
+                updated_at=updated_at
+            )
+        raise HTTPException(status_code=500, detail="Failed to update document")
+    except Exception as e:
+        logger.error(f"Error updating document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/documents/{document_id}", status_code=204)
+async def delete_document(document_id: int):
+    """Delete a specific document by ID."""
+    try:
+        result = database.load_document(document_id, app.state.db_path)
+        if not result:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        database.delete_document(document_id, app.state.db_path)
+        return  # 204 No Content automatically
+    except Exception as e:
+        logger.error(f"Error deleting document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

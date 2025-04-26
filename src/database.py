@@ -93,3 +93,10 @@ def update_document(doc_id: int, content: str, topic: Optional[str], db_path: st
         return cursor.rowcount > 0
     finally:
         conn.close()
+
+def delete_document(document_id: int, db_path: str):
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+    conn.commit()
+    conn.close()

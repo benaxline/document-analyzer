@@ -7,9 +7,11 @@
     body { font-family: Arial, sans-serif; margin: 40px; }
     h1 { color: #333; }
     form, .doc-list, .analysis { margin-top: 20px; }
-    textarea { width: 100%; height: 100px; }
+    textarea, input[type="text"] { width: 100%; margin-top: 5px; }
+    textarea { height: 100px; }
     .doc-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
-    button { margin-top: 5px; }
+    button { margin-top: 5px; margin-right: 5px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -47,12 +49,26 @@ async function fetchDocuments() {
     div.className = 'doc-item';
     div.innerHTML = `
       <p><strong>ID:</strong> ${doc.id}</p>
-      <p><strong>Content:</strong> ${doc.content.slice(0, 100)}...</p>
-      <p><strong>Topic:</strong> ${doc.topic || 'N/A'}</p>
+      <p><strong>Content:</strong> <span id="content-${doc.id}">${doc.content.slice(0, 100)}...</span></p>
+      <p><strong>Topic:</strong> <span id="topic-${doc.id}">${doc.topic || 'N/A'}</span></p>
       <button onclick="analyzeDocument(${doc.id})">Analyze</button>
+      <button onclick="showUpdateForm(${doc.id}, '${escapeQuotes(doc.content)}', '${escapeQuotes(doc.topic || '')}')">Update</button>
+      <button onclick="deleteDocument(${doc.id})" style="color: red;">Delete</button>
+
+      <div id="update-form-${doc.id}" class="hidden">
+        <h4>Update Document</h4>
+        <textarea id="update-content-${doc.id}">${doc.content}</textarea>
+        <input type="text" id="update-topic-${doc.id}" placeholder="Optional topic" value="${doc.topic || ''}">
+        <button onclick="submitUpdate(${doc.id})">Save</button>
+        <button onclick="cancelUpdate(${doc.id})">Cancel</button>
+      </div>
     `;
     container.appendChild(div);
   });
+}
+
+function escapeQuotes(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
 async function analyzeDocument(docId) {
@@ -69,6 +85,42 @@ async function analyzeDocument(docId) {
     <p><strong>Summary:</strong> ${analysis.summary}</p>
   `;
   fetchDocuments(); // refresh topics
+}
+
+async function deleteDocument(docId) {
+  if (!confirm('Are you sure you want to delete this document?')) return;
+  const res = await fetch(`${API_BASE}/documents/${docId}`, {
+    method: 'DELETE'
+  });
+  if (res.ok) {
+    fetchDocuments();
+  } else {
+    alert('Failed to delete document');
+  }
+}
+
+function showUpdateForm(id, content, topic) {
+  document.getElementById(`update-form-${id}`).classList.remove('hidden');
+}
+
+function cancelUpdate(id) {
+  document.getElementById(`update-form-${id}`).classList.add('hidden');
+}
+
+async function submitUpdate(id) {
+  const content = document.getElementById(`update-content-${id}`).value;
+  const topic = document.getElementById(`update-topic-${id}`).value;
+
+  const res = await fetch(`${API_BASE}/documents/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, topic })
+  });
+  if (res.ok) {
+    fetchDocuments();
+  } else {
+    alert('Failed to update document');
+  }
 }
 
 document.getElementById('createForm').addEventListener('submit', async (e) => {
