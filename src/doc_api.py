@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -12,6 +13,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Document Analyzer")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (use with caution in production)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Set default database path
 app.state.db_path = "docs.db"
@@ -110,7 +119,7 @@ async def analyze_document(doc_id: int):
         logger.error(f"Error analyzing document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/documents/", response_model=Document, status_code=201)
+@app.post("/documents", response_model=Document, status_code=201)
 async def create_document(document: DocumentCreate):
     """Create a new document."""
     try:
@@ -130,7 +139,7 @@ async def create_document(document: DocumentCreate):
         logger.error(f"Error creating document: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/documents/", response_model=List[Document])
+@app.get("/documents", response_model=List[Document])  # Fixed endpoint for /documents
 async def read_documents():
     """Retrieve all documents."""
     try:
@@ -194,4 +203,3 @@ async def update_document(document_id: int, document: DocumentUpdate):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-

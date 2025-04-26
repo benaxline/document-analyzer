@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Document Analyzer</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    h1 { color: #333; }
+    form, .doc-list, .analysis { margin-top: 20px; }
+    textarea { width: 100%; height: 100px; }
+    .doc-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
+    button { margin-top: 5px; }
+  </style>
+</head>
+<body>
+
+<h1>📄 Document Analyzer</h1>
+
+<section class="doc-list">
+  <h2>All Documents</h2>
+  <div id="documents"></div>
+</section>
+
+<section class="create-doc">
+  <h2>Create New Document</h2>
+  <form id="createForm">
+    <textarea id="content" placeholder="Write your document content here..." required></textarea><br>
+    <button type="submit">Create Document</button>
+  </form>
+</section>
+
+<section class="analysis">
+  <h2>Analysis Result</h2>
+  <div id="analysisResult"></div>
+</section>
+
+<script>
+const API_BASE = 'http://localhost:8000'; // adjust if backend is elsewhere
+
+async function fetchDocuments() {
+  const res = await fetch(`${API_BASE}/documents`);
+  const docs = await res.json();
+  const container = document.getElementById('documents');
+  container.innerHTML = '';
+  docs.forEach(doc => {
+    const div = document.createElement('div');
+    div.className = 'doc-item';
+    div.innerHTML = `
+      <p><strong>ID:</strong> ${doc.id}</p>
+      <p><strong>Content:</strong> ${doc.content.slice(0, 100)}...</p>
+      <p><strong>Topic:</strong> ${doc.topic || 'N/A'}</p>
+      <button onclick="analyzeDocument(${doc.id})">Analyze</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+async function analyzeDocument(docId) {
+  const res = await fetch(`${API_BASE}/documents/${docId}/analyze`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    alert('Failed to analyze document');
+    return;
+  }
+  const analysis = await res.json();
+  document.getElementById('analysisResult').innerHTML = `
+    <p><strong>Topic:</strong> ${analysis.topic}</p>
+    <p><strong>Summary:</strong> ${analysis.summary}</p>
+  `;
+  fetchDocuments(); // refresh topics
+}
+
+document.getElementById('createForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const content = document.getElementById('content').value;
+  if (!content.trim()) {
+    alert('Content cannot be empty.');
+    return;
+  }
+  const res = await fetch(`${API_BASE}/documents`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content })
+  });
+  if (res.ok) {
+    document.getElementById('content').value = '';
+    fetchDocuments();
+  } else {
+    alert('Failed to create document');
+  }
+});
+
+// Load documents on page load
+fetchDocuments();
+</script>
+
+</body>
+</html>
