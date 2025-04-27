@@ -1,11 +1,15 @@
 import sqlite3
 from datetime import datetime
 from typing import Optional, Tuple, List, Union
+import os
 
 def init_db(db_path: str = "src/database/docs.db") -> None:
     """
     initializes SQLite database
     """
+    db_directory = os.path.dirname(db_path)
+    if not os.path.exists(db_directory):
+        os.makedirs(db_directory)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("""CREATE TABLE IF NOT EXISTS documents (

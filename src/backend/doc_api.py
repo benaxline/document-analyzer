@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -8,11 +9,15 @@ from .config import get_openai_client
 import sqlite3
 import logging
 
+database.init_db()
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Document Analyzer")
+
+app.mount("/static", StaticFiles(directory="src/frontend"), name="static")
 
 app.add_middleware(
     CORSMiddleware,

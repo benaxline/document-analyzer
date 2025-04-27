@@ -5,7 +5,7 @@ from openai import OpenAI
 import os
 
 # Load .env file
-load_dotenv()
+load_dotenv("src/.env")
 
 class Settings(BaseSettings):
     # OpenAI Configuration
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # Using the new SettingsConfigDict instead of the deprecated Config class
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file="src/.env",
         env_file_encoding='utf-8',
         case_sensitive=False,
         protected_namespaces=()
